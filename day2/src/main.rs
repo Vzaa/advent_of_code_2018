@@ -44,8 +44,8 @@ fn p2() {
         let mut b1 = None;
         let mut b2 = None;
 
-        for a in boxes.iter() {
-            for b in boxes.iter() {
+        for (idx, a) in boxes.iter().enumerate() {
+            for b in boxes.iter().skip(idx + 1) {
                 if diff(a, b) == 1 {
                     b1 = Some(a);
                     b2 = Some(b);
