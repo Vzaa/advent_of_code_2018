@@ -9,6 +9,12 @@ enum ParseRectError {
     Empty,
 }
 
+impl From<ParseIntError> for ParseRectError {
+    fn from(e: ParseIntError) -> Self {
+        ParseRectError::Int(e)
+    }
+}
+
 #[derive(Debug)]
 struct Rect {
     id: usize,
@@ -25,8 +31,7 @@ impl FromStr for Rect {
             .get(0)
             .ok_or(ParseRectError::Empty)?
             .replace("#", "")
-            .parse()
-            .map_err(|e| ParseRectError::Int(e))?;
+            .parse()?;
 
         let cstr = cols.get(2).ok_or(ParseRectError::Empty)?.replace(":", "");
 
@@ -39,25 +44,13 @@ impl FromStr for Rect {
             .map(|x| x.parse::<usize>());
 
         let size = (
-            iters
-                .next()
-                .ok_or(ParseRectError::Empty)?
-                .map_err(|e| ParseRectError::Int(e))?,
-            iters
-                .next()
-                .ok_or(ParseRectError::Empty)?
-                .map_err(|e| ParseRectError::Int(e))?,
+            iters.next().ok_or(ParseRectError::Empty)??,
+            iters.next().ok_or(ParseRectError::Empty)??,
         );
 
         let corner = (
-            iterc
-                .next()
-                .ok_or(ParseRectError::Empty)?
-                .map_err(|e| ParseRectError::Int(e))?,
-            iterc
-                .next()
-                .ok_or(ParseRectError::Empty)?
-                .map_err(|e| ParseRectError::Int(e))?,
+            iterc.next().ok_or(ParseRectError::Empty)??,
+            iterc.next().ok_or(ParseRectError::Empty)??,
         );
 
         Ok(Rect { id, corner, size })
