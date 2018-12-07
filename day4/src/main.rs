@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::num::ParseIntError;
@@ -137,37 +136,21 @@ fn get_entries() -> Vec<Entry> {
 
 fn main() {
     let entries = get_entries();
-    let ids: HashSet<_> = entries.iter().map(|e| e.id).collect();
     let mut sleep_mins = HashMap::new();
 
     // process sleep mins
-    for &id in &ids {
-        let mut sleep = None;
-        let mut wake = None;
-        for e in entries.iter().filter(|e| e.id == id) {
-            match e.act {
-                Action::Begin => (),
-                Action::Sleep => {
-                    assert!(sleep.is_none());
-                    sleep = Some(e.date);
-                }
-                Action::WakeUp => {
-                    assert!(wake.is_none());
-                    wake = Some(e.date);
-                }
-            }
-
-            // If both sleep and wake are set calculate a sleep session by extracting minutes
-            if let (Some(s), Some(w)) = (sleep, wake) {
-                // Assume sleep sessions are always inside an hour
-                assert!(s.min < w.min);
-                for min in s.min..w.min {
-                    let v = sleep_mins.entry(id).or_insert(Vec::new());
+    for (e1, e2) in entries.iter().zip(entries[1..].iter()) {
+        match (&e1.act, &e2.act) {
+            (Action::Sleep, Action::WakeUp) => {
+                let (min1, min2) = (e1.date.min, e2.date.min);
+                assert!(e1.id == e2.id);
+                assert!(min1 < min2);
+                for min in min1..min2 {
+                    let v = sleep_mins.entry(e1.id).or_insert(Vec::new());
                     v.push(min);
                 }
-                sleep = None;
-                wake = None;
             }
+            _ => (),
         }
     }
 
@@ -199,7 +182,7 @@ fn main() {
     // Part 2
     {
         let mut most_mins = HashMap::new();
-        for id in &ids {
+        for id in sleep_mins.keys() {
             let mins = match sleep_mins.get(id) {
                 Some(m) => m,
                 None => continue, // never slept so not in sleep_mins
