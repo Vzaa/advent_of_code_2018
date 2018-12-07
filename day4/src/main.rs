@@ -138,7 +138,7 @@ fn get_entries() -> Vec<Entry> {
 fn main() {
     let entries = get_entries();
     let ids: HashSet<_> = entries.iter().map(|e| e.id).collect();
-    let mut sleep_mins: HashMap<_, Vec<i64>> = HashMap::new();
+    let mut sleep_mins = HashMap::new();
 
     // process sleep mins
     for &id in &ids {
@@ -171,25 +171,61 @@ fn main() {
         }
     }
 
-    // Get max sleeper
-    let (id, mins) = sleep_mins
-        .iter()
-        .max_by(|(_, v1), (_, v2)| v1.len().cmp(&v2.len()))
-        .unwrap();
+    // Part 1
+    {
+        // Get max sleeper
+        let (id, mins) = sleep_mins
+            .iter()
+            .max_by(|(_, v1), (_, v2)| v1.len().cmp(&v2.len()))
+            .unwrap();
 
-    // Count occurences of minutes
-    let mut hist: HashMap<_, _> = HashMap::new();
-    for &min in mins.iter() {
-        let v = hist.entry(min).or_insert(0);
-        *v += 1;
+        // Count occurences of minutes
+        let mut hist = HashMap::new();
+        for &min in mins.iter() {
+            let v = hist.entry(min).or_insert(0);
+            *v += 1;
+        }
+
+        let (&min, _) = hist.iter().max_by(|(_, v1), (_, v2)| v1.cmp(&v2)).unwrap();
+
+        println!(
+            "Part 1: id({}) x min({}) = {}",
+            id.unwrap(),
+            min,
+            (id.unwrap()) * min
+        );
     }
 
-    let (&min, _) = hist.iter().max_by(|(_, v1), (_, v2)| v1.cmp(&v2)).unwrap();
+    // Part 2
+    {
+        let mut most_mins = HashMap::new();
+        for id in &ids {
+            let mins = match sleep_mins.get(id) {
+                Some(m) => m,
+                None => continue, // never slept so not in sleep_mins
+            };
 
-    println!(
-        "id({}) x min({}) = {}",
-        id.unwrap(),
-        min,
-        (id.unwrap()) * min
-    );
+            let mut hist = HashMap::new();
+            for &min in mins.iter() {
+                let v = hist.entry(min).or_insert(0);
+                *v += 1;
+            }
+
+            let (&min, &cnt) = hist.iter().max_by(|(_, v1), (_, v2)| v1.cmp(&v2)).unwrap();
+
+            most_mins.insert(id, (min, cnt));
+        }
+
+        let (&id, (min, _)) = most_mins
+            .iter()
+            .max_by(|(_, (_, v1)), (_, (_, v2))| v1.cmp(&v2))
+            .unwrap();
+
+        println!(
+            "Part 2: id({}) x min({}) = {}",
+            id.unwrap(),
+            min,
+            (id.unwrap()) * min
+        );
+    }
 }
