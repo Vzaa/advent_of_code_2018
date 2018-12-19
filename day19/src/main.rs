@@ -151,7 +151,7 @@ fn eqrr(mut reg_in: Reg, args: Args) -> Reg {
 }
 
 fn main() {
-    let opcode_map: HashMap<_, _> = vec![
+    let opcode_map: HashMap<_, _> = [
         ("addi", addi as OpFn),
         ("addr", addr),
         ("mulr", mulr),
@@ -170,6 +170,7 @@ fn main() {
         ("eqrr", eqrr),
     ]
     .into_iter()
+    .map(|a| *a)
     .collect();
 
     // The Amazing Parse-Man
@@ -192,7 +193,7 @@ fn main() {
                 words.next().unwrap().parse().unwrap(),
             ];
 
-            program.push((op, args));
+            program.push((opcode_map[op.as_str()], args));
         }
 
         (pc_reg, program)
@@ -204,12 +205,11 @@ fn main() {
 
         for _ in 0.. {
             let pc = reg[pc_reg];
-            let (op, args) = if let Some((o, a)) = program.get(pc as usize) {
-                (o, a)
+            let (f, args) = if let Some((f, a)) = program.get(pc as usize) {
+                (f, a)
             } else {
                 break;
             };
-            let f = opcode_map[op.as_str()];
             reg = f(reg, *args);
             reg[pc_reg] += 1;
         }
