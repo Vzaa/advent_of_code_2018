@@ -1,6 +1,9 @@
+use std::cmp::Ord;
+use std::cmp::Ordering;
+use std::collections::BinaryHeap;
 use std::collections::HashMap;
 
-type Pos = (i64, i64);
+type Pos = (i32, i32);
 
 #[derive(Debug, Clone, Copy)]
 enum Type {
@@ -10,7 +13,7 @@ enum Type {
 }
 
 impl Type {
-    fn from_lvl(lvl: i64) -> Type {
+    fn from_lvl(lvl: i32) -> Type {
         match lvl % 3 {
             0 => Type::Rocky,
             1 => Type::Wet,
@@ -44,22 +47,22 @@ impl Type {
     }
 }
 
-fn elevel(glevels: &mut HashMap<Pos, i64>, p: Pos) -> i64 {
+fn elevel(glevels: &mut HashMap<Pos, i32>, p: Pos) -> i32 {
     let g = geo_index(p, glevels);
     (g + DEPTH) % 20183
 }
 
-fn get_type(glevels: &mut HashMap<Pos, i64>, p: Pos) -> Type {
+fn get_type(glevels: &mut HashMap<Pos, i32>, p: Pos) -> Type {
     let e = elevel(glevels, p);
     Type::from_lvl(e)
 }
 
 const TARGET: Pos = (10, 725);
-const DEPTH: i64 = 8787;
+const DEPTH: i32 = 8787;
 //const TARGET: Pos = (10, 10);
-//const DEPTH: i64 = 510;
+//const DEPTH: i32 = 510;
 
-fn geo_index(p: Pos, glevels: &mut HashMap<Pos, i64>) -> i64 {
+fn geo_index(p: Pos, glevels: &mut HashMap<Pos, i32>) -> i32 {
     if let Some(g) = glevels.get(&p) {
         return *g;
     }
@@ -113,37 +116,41 @@ struct State {
 }
 
 impl State {
-    pub fn new(t : Tool, p: Pos) -> State {
-        State {p, t}
+    pub fn new(t: Tool, p: Pos) -> State {
+        State { p, t }
     }
 }
 
-fn ucs(maze: &mut HashMap<Pos, i64>) {
+#[derive(PartialEq, Eq)]
+struct C(State, i32);
 
+impl Ord for C {
+    fn cmp(&self, other: &C) -> Ordering {
+        self.1.cmp(&other.1).reverse()
+    }
+}
+
+impl PartialOrd for C {
+    fn partial_cmp(&self, other: &C) -> Option<Ordering> {
+        Some(self.1.cmp(&other.1).reverse())
+    }
+}
+
+fn ucs(maze: &mut HashMap<Pos, i32>) {
     let adj = [(0, 1), (0, -1), (1, 0), (-1, 0)];
 
     let initial = State::new(Tool::Torch, (0, 0));
 
-    let mut frontier = vec![(initial, 0)];
+    let mut frontier = BinaryHeap::new();
+    frontier.push(C(initial, 0));
     let mut bests = HashMap::new();
 
     loop {
         // get min cost
-        let idx = frontier.iter().enumerate().min_by_key(|(_, s)| s.1).unwrap().0;
-        let (cur, cost) = frontier.remove(idx);
+        let C(cur, cost) = frontier.pop().unwrap();
 
         let p = cur.p;
         let t = get_type(maze, p);
-
-        if let Some(b) = bests.get_mut(&cur) {
-            if cost < *b {
-                *b = cost
-            } else {
-                continue;
-            }
-        } else {
-            bests.insert(cur.clone(), cost);
-        }
 
         if p == TARGET && cur.t == Tool::Torch {
             println!("Part 2: {}", cost);
@@ -155,11 +162,20 @@ fn ucs(maze: &mut HashMap<Pos, i64>) {
             .map(|&s| (s.0 + p.0, s.1 + p.1))
             .filter(|&n| n.0 >= 0 && n.1 >= 0);
 
-
         for tool in &t.tools() {
             if cur.t != *tool { // same pos, different tool
                 let new_state = State::new(*tool, p);
-                frontier.push((new_state, cost + 7));
+                let new_cost = cost + 7;
+
+                if let Some(b) = bests.get_mut(&new_state) {
+                    if new_cost < *b {
+                        *b = new_cost;
+                        frontier.push(C(new_state, new_cost));
+                    }
+                } else {
+                    bests.insert(new_state.clone(), new_cost);
+                    frontier.push(C(new_state, new_cost));
+                }
             }
         }
 
@@ -167,7 +183,17 @@ fn ucs(maze: &mut HashMap<Pos, i64>) {
             let nt = get_type(maze, n);
             if nt.tools().contains(&cur.t) { // can we use this tool there?
                 let new_state = State::new(cur.t, n);
-                frontier.push((new_state, cost + 1));
+                let new_cost = cost + 1;
+
+                if let Some(b) = bests.get_mut(&new_state) {
+                    if new_cost < *b {
+                        *b = new_cost;
+                        frontier.push(C(new_state, new_cost));
+                    }
+                } else {
+                    bests.insert(new_state.clone(), new_cost);
+                    frontier.push(C(new_state, new_cost));
+                }
             }
         }
     }
